@@ -9,3 +9,4 @@ authors = ["Nathaly Michel Berroa Fermín"]
 license = "MIT"
 
 [dependencies]
+eframe = "0.27"
