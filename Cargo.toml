@@ -1,0 +1,11 @@
+[package]
+name = "analizador"
+version = "0.1.0"
+edition = "2021"
+
+# Documentación opcional
+description = "Intérprete de lenguaje simple: asignaciones, expresiones, if, while, print"
+authors = ["Nathaly Michel Berroa Fermín"]
+license = "MIT"
+
+[dependencies]
