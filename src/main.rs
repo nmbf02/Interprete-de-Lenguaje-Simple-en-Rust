@@ -59,7 +59,12 @@ impl eframe::App for App {
                         egui::Color32::WHITE
                     };
 
-                    ui.colored_label(color, egui::RichText::new(&self.output).monospace().text_style(output_style));
+                    ui.colored_label(
+                        color,
+                        egui::RichText::new(&self.output)
+                            .monospace()
+                            .text_style(output_style),
+                    );
                 });
         });
     }
@@ -71,7 +76,10 @@ fn interpretar(source: &str) -> (String, bool) {
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
 
-    let statements = parser.parse_statements();
+    let statements = match parser.parse_statements() {
+        Ok(s) => s,
+        Err(e) => return (format!("Error de sintaxis: {}", e), true),
+    };
 
     let mut ctx = Context::new();
     let mut output = String::new();
@@ -81,7 +89,7 @@ fn interpretar(source: &str) -> (String, bool) {
         match stmt.execute(&mut ctx) {
             Ok(_) => (),
             Err(e) => {
-                output.push_str(&format!("Error: {}\n", e));
+                output.push_str(&format!("Error de ejecución: {}\n", e));
                 has_error = true;
                 break;
             }

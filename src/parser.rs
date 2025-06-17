@@ -120,70 +120,70 @@ impl Parser {
     }
 
     /// Punto de entrada: parsear todas las instrucciones.
-    pub fn parse_statements(&mut self) -> Vec<Statement> {
+    pub fn parse_statements(&mut self) -> Result<Vec<Statement>, String> {
         let mut statements = Vec::new();
         while self.current_token != Token::EOF {
-            statements.push(self.parse_statement());
+            statements.push(self.parse_statement()?);
         }
-        statements
+        Ok(statements)
     }
 
     /// Parsea una sola instrucción: asignación, print, if o while.
-    fn parse_statement(&mut self) -> Statement {
+    fn parse_statement(&mut self) -> Result<Statement, String> {
         match &self.current_token {
             Token::Ident(name) if name == "print" => {
-                self.advance(); // consumir 'print'
-                let expr = self.parse_expression();
-                Statement::Print(expr)
+                self.advance();
+                let expr = self.parse_expression()?;
+                Ok(Statement::Print(expr))
             }
             Token::Ident(name) => {
                 let var_name = name.clone();
                 self.advance();
                 if self.current_token != Token::Equals {
-                    panic!("Se esperaba '=' luego de la variable");
+                    return Err("Se esperaba '=' luego de la variable".to_string());
                 }
-                self.advance(); // consumir '='
-                let expr = self.parse_expression();
-                Statement::Assign(var_name, expr)
+                self.advance();
+                let expr = self.parse_expression()?;
+                Ok(Statement::Assign(var_name, expr))
             }
             Token::If => {
-                self.advance(); // consumir 'if'
-                let condition = self.parse_expression();
-                let body = self.parse_block();
-                Statement::If(condition, body)
+                self.advance();
+                let condition = self.parse_expression()?;
+                let body = self.parse_block()?;
+                Ok(Statement::If(condition, body))
             }
             Token::While => {
-                self.advance(); // consumir 'while'
-                let condition = self.parse_expression();
-                let body = self.parse_block();
-                Statement::While(condition, body)
+                self.advance();
+                let condition = self.parse_expression()?;
+                let body = self.parse_block()?;
+                Ok(Statement::While(condition, body))
             }
-            _ => panic!("Instrucción no válida: {:?}", self.current_token),
+            _ => Err(format!("Instrucción no válida: {:?}", self.current_token)),
         }
     }
 
     /// Parsea un bloque de instrucciones hasta encontrar `end`.
-    fn parse_block(&mut self) -> Vec<Statement> {
+    fn parse_block(&mut self) -> Result<Vec<Statement>, String> {
         let mut block = Vec::new();
         while self.current_token != Token::End && self.current_token != Token::EOF {
-            block.push(self.parse_statement());
+            block.push(self.parse_statement()?);
         }
         if self.current_token == Token::End {
-            self.advance(); // consumir 'end'
+            self.advance();
+            Ok(block)
         } else {
-            panic!("Se esperaba 'end' para cerrar el bloque");
+            Err("Se esperaba 'end' para cerrar el bloque".to_string())
         }
-        block
     }
 
     /// Parsea una expresión, respetando precedencia.
-    fn parse_expression(&mut self) -> Expr {
+    fn parse_expression(&mut self) -> Result<Expr, String> {
         self.parse_comparison()
     }
 
     /// Comparaciones: ==, <, >
-    fn parse_comparison(&mut self) -> Expr {
-        let mut expr = self.parse_term();
+    fn parse_comparison(&mut self) -> Result<Expr, String> {
+        let mut expr = self.parse_term()?;
 
         while matches!(
             self.current_token,
@@ -191,7 +191,7 @@ impl Parser {
         ) {
             let op = self.current_token.clone();
             self.advance();
-            let right = self.parse_term();
+            let right = self.parse_term()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op,
@@ -199,17 +199,17 @@ impl Parser {
             };
         }
 
-        expr
+        Ok(expr)
     }
 
     /// Suma y resta
-    fn parse_term(&mut self) -> Expr {
-        let mut expr = self.parse_factor();
+    fn parse_term(&mut self) -> Result<Expr, String> {
+        let mut expr = self.parse_factor()?;
 
         while self.current_token == Token::Plus || self.current_token == Token::Minus {
             let op = self.current_token.clone();
             self.advance();
-            let right = self.parse_factor();
+            let right = self.parse_factor()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op,
@@ -217,17 +217,17 @@ impl Parser {
             };
         }
 
-        expr
+        Ok(expr)
     }
 
     /// Multiplicación y división
-    fn parse_factor(&mut self) -> Expr {
-        let mut expr = self.parse_primary();
+    fn parse_factor(&mut self) -> Result<Expr, String> {
+        let mut expr = self.parse_primary()?;
 
         while self.current_token == Token::Star || self.current_token == Token::Slash {
             let op = self.current_token.clone();
             self.advance();
-            let right = self.parse_primary();
+            let right = self.parse_primary()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op,
@@ -235,32 +235,32 @@ impl Parser {
             };
         }
 
-        expr
+        Ok(expr)
     }
 
     /// Valores primarios: números, variables, paréntesis.
-    fn parse_primary(&mut self) -> Expr {
+    fn parse_primary(&mut self) -> Result<Expr, String> {
         match &self.current_token {
             Token::Number(n) => {
                 let val = *n;
                 self.advance();
-                Expr::Number(val)
+                Ok(Expr::Number(val))
             }
             Token::Ident(name) => {
                 let ident = name.clone();
                 self.advance();
-                Expr::Ident(ident)
+                Ok(Expr::Ident(ident))
             }
             Token::LParen => {
-                self.advance(); // consumir '('
-                let expr = self.parse_expression();
+                self.advance();
+                let expr = self.parse_expression()?;
                 if self.current_token != Token::RParen {
-                    panic!("Se esperaba ')'");
+                    return Err("Se esperaba ')'".to_string());
                 }
-                self.advance(); // consumir ')'
-                expr
+                self.advance();
+                Ok(expr)
             }
-            _ => panic!("Token inesperado en expresión: {:?}", self.current_token),
+            _ => Err(format!("Token inesperado en expresión: {:?}", self.current_token)),
         }
     }
 }
