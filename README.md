@@ -1,39 +1,60 @@
 # Intérprete de Lenguaje Simple en Rust
 
-Este proyecto implementa un **intérprete completo de un lenguaje de programación básico**, escrito 100% en Rust. Incluye:
+Este proyecto es un **intérprete educativo** de un lenguaje de programación simple, desarrollado completamente en **Rust**. Cuenta con una **interfaz gráfica moderna** (basada en [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe)) y un modo por **línea de comandos**, ambos con soporte para análisis léxico, sintáctico y ejecución de estructuras básicas como asignaciones, comparaciones, bucles y condicionales.
 
-- Analizador léxico (lexer)
-- Analizador sintáctico (parser)
-- Análisis semántico (contexto de variables)
-- Evaluación y ejecución de instrucciones
-- Soporte para:
-  - Asignaciones (`x = 5 + 2`)
-  - Impresiones (`print x`)
-  - Bloques condicionales (`if ... end`)
-  - Bucles (`while ... end`)
-  - Comentarios con `#`
-  - Lectura de archivos `.txt` como entrada
+---
 
-## Estructura del proyecto
+## Estructura del Proyecto
 
 ```
 
-analizador/
-├── Cargo.toml
-├── programa.txt         # Código fuente de entrada
+ANALIZADOR/
 ├── src/
-│   ├── main.rs
-│   ├── lexer.rs
-│   └── parser.rs
-└── .cargo/
-└── config.toml      # Forzar uso de toolchain GNU (opcional)
+│   ├── lexer.rs         # Analizador léxico: convierte texto en tokens
+│   ├── parser.rs        # Analizador sintáctico + ejecución con detección de errores
+│   ├── main.rs          # Interfaz gráfica usando egui/eframe
+│   └── main_cli.rs      # Ejecución desde archivo por consola
+├── programa.txt         # Programa de ejemplo a interpretar
+├── Cargo.toml           # Configuración del proyecto Rust
+├── Cargo.lock
+└── README.md            # Este documento
 
 ````
 
-## Ejemplo de entrada (`programa.txt`)
+---
 
-```txt
-# Programa de prueba
+## Características
+
+Lenguaje simple con:
+
+- Variables enteras
+- Expresiones matemáticas y lógicas
+- Estructuras `if`, `while`, `print`
+- Comentarios con `#`
+
+Interfaz gráfica moderna con:
+
+- Campo de entrada de código
+- Botones `Ejecutar` y `Limpiar`
+- **Historial de entradas reutilizable**
+- Scroll en área de resultados
+- Mensajes de error resaltados en rojo con número de línea
+
+Modo consola:
+
+- Lee desde `programa.txt`
+- Útil para pruebas automáticas o sin GUI
+
+Errores sintácticos y de ejecución manejados limpiamente
+
+Compatible con compilación a `.exe` para distribución
+
+---
+
+## Ejemplo de programa soportado
+
+```text
+# Contador del 0 al 2
 x = 0
 
 while x < 3
@@ -46,37 +67,57 @@ if x == 3
 end
 ````
 
+---
+
 ## Cómo ejecutar
 
-1. Asegúrate de tener Rust con la toolchain `gnu`:
+### Requisitos
+
+* [Rust](https://rustup.rs)
+* Visual Studio Build Tools (con C++ y Windows SDK)
+
+---
+
+### GUI (Interfaz gráfica)
 
 ```bash
-rustup install stable-x86_64-pc-windows-gnu
-rustup default stable-x86_64-pc-windows-gnu
+cargo run --release --bin analizador
 ```
 
-2. Ejecuta el proyecto:
+> Esto abrirá la aplicación visual con entrada y salida de código en vivo.
+
+---
+
+### CLI (modo consola)
+
+Coloca el código en `programa.txt` y ejecuta:
 
 ```bash
-cd C:\analizador
-cargo run
+cargo run --release --bin main_cli
 ```
 
-3. Verás el resultado:
+---
 
+## Compilación del ejecutable
+
+```bash
+cargo build --release
 ```
-0
-1
-2
-3
-```
 
-## Requisitos
+* GUI: `target/release/analizador.exe`
+* CLI: `target/release/main_cli.exe`
 
-* Rust (toolchain GNU)
-* PowerShell o terminal CMD
-* Editor como Visual Studio Code (opcional)
+---
 
-## Autora
+## Distribución
 
-**Nathaly Michel Berroa Fermín**
+Puedes empaquetar el `.exe` en un `.zip` o crear un instalador con:
+
+* [Inno Setup](https://jrsoftware.org/isinfo.php)
+* [NSIS](https://nsis.sourceforge.io/)
+
+---
+
+## Autoría
+
+Desarrollado por **Nathaly Michel Berroa Fermín**
