@@ -1,4 +1,4 @@
-use crate::lexer::{Lexer, Token};
+use crate::lexer::{Lexer, Token, TokenWithLine};
 use std::collections::HashMap;
 
 //
@@ -65,7 +65,7 @@ pub enum Statement {
 
 impl Statement {
     /// Ejecuta una instrucción dentro de un contexto.
-    pub fn execute(&self, ctx: &mut Context) -> Result<(), String> {
+    pub fn execute(&self, ctx: &mut Context, output: &mut String) -> Result<(), String> {
         match self {
             Statement::Assign(name, expr) => {
                 let val = expr.eval(ctx)?;
@@ -74,13 +74,13 @@ impl Statement {
             }
             Statement::Print(expr) => {
                 let val = expr.eval(ctx)?;
-                println!("{}", val);
+                output.push_str(&format!("{}\n", val));
                 Ok(())
             }
             Statement::If(cond, body) => {
                 if cond.eval(ctx)? != 0 {
                     for stmt in body {
-                        stmt.execute(ctx)?;
+                        stmt.execute(ctx, output)?;
                     }
                 }
                 Ok(())
@@ -88,7 +88,7 @@ impl Statement {
             Statement::While(cond, body) => {
                 while cond.eval(ctx)? != 0 {
                     for stmt in body {
-                        stmt.execute(ctx)?;
+                        stmt.execute(ctx, output)?;
                     }
                 }
                 Ok(())
@@ -104,33 +104,36 @@ impl Statement {
 /// Parser que convierte tokens en instrucciones (AST).
 pub struct Parser {
     lexer: Lexer,
-    current_token: Token,
+    current: TokenWithLine,
 }
 
 impl Parser {
     /// Crea un nuevo parser con un lexer.
     pub fn new(mut lexer: Lexer) -> Self {
-        let current_token = lexer.next_token();
-        Parser { lexer, current_token }
+        let current = lexer.next_token();
+        Parser { lexer, current }
     }
 
     /// Avanza al siguiente token.
     fn advance(&mut self) {
-        self.current_token = self.lexer.next_token();
+        self.current = self.lexer.next_token();
     }
 
     /// Punto de entrada: parsear todas las instrucciones.
     pub fn parse_statements(&mut self) -> Result<Vec<Statement>, String> {
         let mut statements = Vec::new();
-        while self.current_token != Token::EOF {
-            statements.push(self.parse_statement()?);
+        while self.current.token != Token::EOF {
+            match self.parse_statement() {
+                Ok(stmt) => statements.push(stmt),
+                Err(e) => return Err(format!("Línea {}: {}", self.current.line, e)),
+            }
         }
         Ok(statements)
     }
 
     /// Parsea una sola instrucción: asignación, print, if o while.
     fn parse_statement(&mut self) -> Result<Statement, String> {
-        match &self.current_token {
+        match &self.current.token {
             Token::Ident(name) if name == "print" => {
                 self.advance();
                 let expr = self.parse_expression()?;
@@ -139,7 +142,7 @@ impl Parser {
             Token::Ident(name) => {
                 let var_name = name.clone();
                 self.advance();
-                if self.current_token != Token::Equals {
+                if self.current.token != Token::Equals {
                     return Err("Se esperaba '=' luego de la variable".to_string());
                 }
                 self.advance();
@@ -158,17 +161,17 @@ impl Parser {
                 let body = self.parse_block()?;
                 Ok(Statement::While(condition, body))
             }
-            _ => Err(format!("Instrucción no válida: {:?}", self.current_token)),
+            _ => Err(format!("Instrucción no válida: {:?}", self.current.token)),
         }
     }
 
     /// Parsea un bloque de instrucciones hasta encontrar `end`.
     fn parse_block(&mut self) -> Result<Vec<Statement>, String> {
         let mut block = Vec::new();
-        while self.current_token != Token::End && self.current_token != Token::EOF {
+        while self.current.token != Token::End && self.current.token != Token::EOF {
             block.push(self.parse_statement()?);
         }
-        if self.current_token == Token::End {
+        if self.current.token == Token::End {
             self.advance();
             Ok(block)
         } else {
@@ -186,10 +189,10 @@ impl Parser {
         let mut expr = self.parse_term()?;
 
         while matches!(
-            self.current_token,
+            self.current.token,
             Token::DoubleEquals | Token::LessThan | Token::GreaterThan
         ) {
-            let op = self.current_token.clone();
+            let op = self.current.token.clone();
             self.advance();
             let right = self.parse_term()?;
             expr = Expr::Binary {
@@ -206,8 +209,8 @@ impl Parser {
     fn parse_term(&mut self) -> Result<Expr, String> {
         let mut expr = self.parse_factor()?;
 
-        while self.current_token == Token::Plus || self.current_token == Token::Minus {
-            let op = self.current_token.clone();
+        while self.current.token == Token::Plus || self.current.token == Token::Minus {
+            let op = self.current.token.clone();
             self.advance();
             let right = self.parse_factor()?;
             expr = Expr::Binary {
@@ -224,8 +227,8 @@ impl Parser {
     fn parse_factor(&mut self) -> Result<Expr, String> {
         let mut expr = self.parse_primary()?;
 
-        while self.current_token == Token::Star || self.current_token == Token::Slash {
-            let op = self.current_token.clone();
+        while self.current.token == Token::Star || self.current.token == Token::Slash {
+            let op = self.current.token.clone();
             self.advance();
             let right = self.parse_primary()?;
             expr = Expr::Binary {
@@ -240,7 +243,7 @@ impl Parser {
 
     /// Valores primarios: números, variables, paréntesis.
     fn parse_primary(&mut self) -> Result<Expr, String> {
-        match &self.current_token {
+        match &self.current.token {
             Token::Number(n) => {
                 let val = *n;
                 self.advance();
@@ -254,13 +257,13 @@ impl Parser {
             Token::LParen => {
                 self.advance();
                 let expr = self.parse_expression()?;
-                if self.current_token != Token::RParen {
+                if self.current.token != Token::RParen {
                     return Err("Se esperaba ')'".to_string());
                 }
                 self.advance();
                 Ok(expr)
             }
-            _ => Err(format!("Token inesperado en expresión: {:?}", self.current_token)),
+            _ => Err(format!("Token inesperado en expresión: {:?}", self.current.token)),
         }
     }
 }

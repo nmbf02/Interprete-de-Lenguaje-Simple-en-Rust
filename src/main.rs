@@ -16,6 +16,7 @@ struct App {
     code_input: String,
     output: String,
     has_error: bool,
+    history: Vec<String>, // Historial de entradas
 }
 
 impl eframe::App for App {
@@ -28,6 +29,11 @@ impl eframe::App for App {
 
             ui.horizontal(|ui| {
                 if ui.button("Ejecutar").clicked() {
+                    let trimmed = self.code_input.trim();
+                    if !trimmed.is_empty() && self.history.last() != Some(&trimmed.to_string()) {
+                        self.history.push(trimmed.to_string());
+                    }
+
                     let (result, error) = interpretar(&self.code_input);
                     self.output = result;
                     self.has_error = error;
@@ -41,9 +47,27 @@ impl eframe::App for App {
             });
 
             ui.separator();
+
+            // Historial de entradas
+            if !self.history.is_empty() {
+                ui.label("Historial de entradas:");
+                egui::ScrollArea::vertical()
+                    .id_source("history_scroll")
+                    .max_height(100.0)
+                    .show(ui, |ui| {
+                        for entry in self.history.iter().rev() {
+                            if ui.button(entry).clicked() {
+                                self.code_input = entry.clone();
+                            }
+                        }
+                    });
+            }
+
+            ui.separator();
             ui.label("Salida:");
 
             egui::ScrollArea::vertical()
+                .id_source("output_scroll")
                 .max_height(200.0)
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
@@ -71,7 +95,6 @@ impl eframe::App for App {
 }
 
 /// Ejecuta el código fuente ingresado y devuelve el resultado o errores.
-/// También indica si hubo error (true/false).
 fn interpretar(source: &str) -> (String, bool) {
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);
@@ -86,8 +109,8 @@ fn interpretar(source: &str) -> (String, bool) {
     let mut has_error = false;
 
     for stmt in statements {
-        match stmt.execute(&mut ctx) {
-            Ok(_) => (),
+        match stmt.execute(&mut ctx, &mut output) {
+            Ok(_) => {}
             Err(e) => {
                 output.push_str(&format!("Error de ejecución: {}\n", e));
                 has_error = true;
