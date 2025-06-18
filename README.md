@@ -1,5 +1,7 @@
 # Intérprete de Lenguaje Simple en Rust
 
+![image](https://github.com/user-attachments/assets/d2801837-0ef8-4b0f-bcc2-b03c5e38e2e0)
+
 Este proyecto es un **intérprete educativo** de un lenguaje de programación simple, desarrollado completamente en **Rust**. Cuenta con una **interfaz gráfica moderna** (basada en [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe)) y un modo por **línea de comandos**, ambos con soporte para análisis léxico, sintáctico y ejecución de estructuras básicas como asignaciones, comparaciones, bucles y condicionales.
 
 ---
